@@ -1,6 +1,14 @@
 package by.bsu.dependency.context;
 
-public class AutoScanApplicationContext extends AbstractApplicationContext {
+import by.bsu.dependency.annotation.Bean;
+
+import java.io.File;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Stream;
+
+public class AutoScanApplicationContext extends SimpleApplicationContext {
 
     /**
      * Создает контекст, содержащий классы из пакета {@code packageName}, помеченные аннотацией {@code @Bean}.
@@ -12,41 +20,40 @@ public class AutoScanApplicationContext extends AbstractApplicationContext {
      * @param packageName имя сканируемого пакета
      */
     public AutoScanApplicationContext(String packageName) {
-        throw new IllegalStateException("not implemented");
+        super(getBeanClasses(packageName));
     }
 
-    @Override
-    public void start() {
-        throw new IllegalStateException("not implemented");
+    private static Stream<Class<?>> getBeanClasses(String packageName) {
+        List<Class<?>> classes = getClassesInPackage(packageName);
+        return classes.stream()
+                .filter(clazz -> clazz.isAnnotationPresent(Bean.class));
     }
 
-    @Override
-    public boolean isRunning() {
-        throw new IllegalStateException("not implemented");
-    }
+    public static List<Class<?>> getClassesInPackage(String packageName) {
+        // library did not work lol
+        List<Class<?>> classes = new ArrayList<>();
+        String path = packageName.replace('.', '/');
 
-    @Override
-    public boolean containsBean(String name) {
-        throw new IllegalStateException("not implemented");
-    }
+        try {
+            URL resource = Thread.currentThread().getContextClassLoader().getResource(path);
+            if (resource != null) {
+                File directory = new File(resource.toURI());
+                if (directory.exists()) {
+                    File[] files = directory.listFiles();
+                    if (files != null) {
+                        for (File file : files) {
+                            if (file.getName().endsWith(".class")) {
+                                String className = file.getName().substring(0, file.getName().length() - 6);
+                                classes.add(Class.forName(packageName + '.' + className));
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("shit happens...");
+        }
 
-    @Override
-    public Object getBean(String name) {
-        throw new IllegalStateException("not implemented");
-    }
-
-    @Override
-    public <T> T getBean(Class<T> clazz) {
-        throw new IllegalStateException("not implemented");
-    }
-
-    @Override
-    public boolean isPrototype(String name) {
-        throw new IllegalStateException("not implemented");
-    }
-
-    @Override
-    public boolean isSingleton(String name) {
-        throw new IllegalStateException("not implemented");
+        return classes;
     }
 }
